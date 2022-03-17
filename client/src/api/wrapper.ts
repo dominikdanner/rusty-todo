@@ -1,23 +1,39 @@
-import type { NewTodo, ResponseCode } from './types'
+import type { NewTodo, ResponseCode, Todo } from "./types"
+import axios from "axios"
 
-const BASE_URL = "http://localhost:8080";
+const api = axios.create({
+  baseURL: "http://localhost:8080",
+})
 
-export const getTodo = async(limit: number) => {
-  try {
-    let response = await fetch(BASE_URL + "/todo/?limit=" + limit)
-    return await response.json();
-  } catch (error) {
-    console.log(error)
-  }
+/**
+ * Get todos
+ * @async 
+ * @param limit The max amout of todos to fetch
+ */
+export const getTodo = async (limit: number): Promise<Todo[]> => {
+  const response = await api.get("/todo/?limit=" + limit)
+  return response.data
 }
-export const postTodo = async (todo: NewTodo): Promise<ResponseCode> => {
-  let response = await fetch(BASE_URL + "/todo/", {
-    method: "POST",
-    body: JSON.stringify(todo),
-    headers: {
-      'content-type': 'application/json;charset=UTF-8',
-    }
-  })
 
-  return response.status;
+/**
+ * Insert new todo
+ * @async
+ * @param todo New Todo Item to insert
+ */
+export const postTodo = async (todo: NewTodo): Promise<ResponseCode> => {
+  return await api.post("/todo/", JSON.stringify(todo), {
+    headers: {
+      "content-type": "application/json;charset=UTF-8",
+    },
+  })
+}
+
+/**
+ * Delete a todo by id
+ * @async
+ * @param id  ID of the item to delete
+ */
+export const deleteTodo = async (id: number): Promise<ResponseCode> => {
+  const response = await api.delete("/todo/?id=" + id)
+  return response.status
 }

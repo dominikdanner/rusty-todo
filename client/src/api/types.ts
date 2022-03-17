@@ -1,4 +1,3 @@
-
 export type ResponseCode = number;
 
 export interface NewTodo {
