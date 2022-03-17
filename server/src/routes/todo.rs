@@ -1,6 +1,7 @@
-use actix_web::{web, get, post, error, HttpRequest};
+use actix_web::{web, delete, get, post, error, HttpRequest};
 use diesel::prelude::*;
 use derive_more::{Display, Error};
+use serde::{Serialize, Deserialize};
 use serde_json;
 
 #[derive(Debug, Display, Error)]
@@ -19,6 +20,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     web::scope("/todo")
       .service(get_todo)
       .service(insert_todo)
+      .service(delete_todo)
   );
 }
 
@@ -52,4 +54,17 @@ async fn insert_todo(state: web::Data<AppState>, info: web::Json<models::NewTodo
     .expect("New Todo insertion failed");
 
   Ok(String::from("New Todo insertion successful"))
+}
+
+#[delete("/")]
+async fn delete_todo(state: web::Data<AppState>, req: HttpRequest) -> Result<String, Error> {
+  let dbconn = &state.dbconn;
+  let todo_id: i32 = get_url_querys(req)
+    .get("id").unwrap()
+    .parse::<i32>()
+    .expect("Parsing `Limit` query failed");
+
+  diesel::delete(todos.filter(id.eq(todo_id))).execute(dbconn).unwrap();
+
+  Ok(String::from("Deleted"))
 }
