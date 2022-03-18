@@ -30,7 +30,7 @@ const Todo: NextPage = () => {
 
   })
 
-  // Update todo item
+  // Create mutation for current todo item 
   const todo = useMutation(["todo", todoId], (updatedTodo: NewTodo) => updateTodo(Number(todoId), updatedTodo), {
 
     // Update chache
