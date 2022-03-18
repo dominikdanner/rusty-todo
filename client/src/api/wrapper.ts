@@ -37,3 +37,33 @@ export const deleteTodo = async (id: number): Promise<ResponseCode> => {
   const response = await api.delete("/todo/?id=" + id)
   return response.status
 }
+ 
+/**
+ * Get todo by there id
+ * @async
+ * @param id 
+ */
+export const getTodoById = async (id: number): Promise<Todo> => {
+  const response = await api.get("/todo/" + id, {
+    headers: {
+      "content-type": "application/json;charset=UTF-8",
+    },
+  })
+
+  return response.data
+}
+
+/**
+ * Update a todo by id 
+ * @param id 
+ * @param updatedTodo 
+ */
+export const updateTodo = async (id: number, updatedTodo: NewTodo): Promise<ResponseCode> => {
+  const response = await api.put("/todo/" + id, JSON.stringify(updatedTodo), {
+    headers: {
+      "content-type": "application/json;charset=UTF-8",
+    },
+  })
+
+  return response.status
+}
