@@ -1,10 +1,14 @@
 import type { NextPage } from "next"
-import { FC, Fragment, useEffect, useState } from "react"
-import { NewTodo, ResponseCode, Todo } from "../api/types"
+import { createContext, Dispatch, FC, Fragment, SetStateAction, useContext, useEffect, useState } from "react"
+import { NewTodo, Todo } from "../api/types"
 import { deleteTodo, getTodo, postTodo } from "../api/wrapper"
-import { PopupForm } from "../components/popup"
+import { Box, Container, PopupForm } from "../components/lib"
 import { TrashIcon, XIcon } from "@heroicons/react/outline"
 import { useMutation, useQuery, useQueryClient } from "react-query"
+import Link from "next/link"
+
+// Stores the state for the Popup
+const PopupContext = createContext<[any, Dispatch<SetStateAction<any>>] | null>(null);
 
 interface TodoItemProps {
   todo: Todo
@@ -30,42 +34,48 @@ const TodoItem: FC<TodoItemProps> = ({ todo, onError: emitError }) => {
   })
 
   return (
-    <div className="flex h-fit cursor-pointer justify-between rounded-lg bg-gray-100 shadow-sm transition-all hover:scale-105 hover:bg-gray-50">
+      <div className="flex h-fit cursor-pointer justify-between rounded-lg bg-gray-100 shadow-sm transition-all hover:scale-105 hover:bg-gray-50">
 
-      <div className="flex w-80 flex-grow flex-col p-3">
+        <Link href={"/" + todo.id}>
 
-        {/* Title of Item */}
-        <h1 className="truncate font-medium">{todo.title}</h1>
-        {/* Description of Item */}
-        <p className="truncate text-sm text-gray-500">{todo.description}</p>
+          <div className="flex w-80 flex-grow flex-col p-3">
 
+            {/* Title of Item */}
+            <h1 className="truncate font-medium">{todo.title}</h1>
+            {/* Description of Item */}
+            <p className="truncate text-sm text-gray-500">{todo.description}</p>
+
+          </div>
+
+        </Link>
+
+        {/* Delete Button */}
+        <div
+          className="flex h-full w-20 items-center justify-center rounded-tr-lg rounded-br-lg bg-gray-400"
+          onClick={() => {
+            mutate()
+          }}
+        >
+          <TrashIcon className="h-6" />
+        </div>
       </div>
-
-      {/* Delete Button */}
-      <div
-        className="flex h-full w-20 items-center justify-center rounded-tr-lg rounded-br-lg bg-gray-400"
-        onClick={() => {
-          mutate()
-        }}
-      >
-        <TrashIcon className="h-6" />
-      </div>
-    </div>
   )
 }
 
-interface AddTodoPopupProps {
-  setIsExpanded: any
-  isExpanded: boolean
+interface AddTodoFormData {
+  title: String;
+  description: String;
 }
 
 /**
  * The Popup for creating a new todo
- * @param AddTodoPopupProps
  */
-const AddTodoPopup: FC<AddTodoPopupProps> = ({ setIsExpanded, isExpanded }) => {
-  const [title, setTitle] = useState<String>("")
-  const [description, setDescription] = useState<String>("")
+const AddTodoPopup: FC = () => {
+  const [isExpanded, setExpanded] = useContext(PopupContext) as any;
+  const [formData, setFormData] = useState<AddTodoFormData>({
+    title: "",
+    description: "",
+  })
   const [error, setError] = useState<String | null>("")
 
   const queryClient = useQueryClient()
@@ -76,7 +86,7 @@ const AddTodoPopup: FC<AddTodoPopupProps> = ({ setIsExpanded, isExpanded }) => {
       queryClient.invalidateQueries("todos")
 
       // Close Popup
-      setIsExpanded(false)
+      setExpanded(false)
     },
   })
 
@@ -90,14 +100,14 @@ const AddTodoPopup: FC<AddTodoPopupProps> = ({ setIsExpanded, isExpanded }) => {
           e.preventDefault()
 
           // Validate Input
-          if (title == "" || description == "") {
+          if (formData.title == "" || formData.description == "") {
             return setError("Please fill out all fields")
           }
 
           // Make request & insert new Todo 
           todos.mutate({
-            title,
-            description,
+            title: formData.title,
+            description: formData.description,
             done: false,
           })
 
@@ -114,7 +124,7 @@ const AddTodoPopup: FC<AddTodoPopupProps> = ({ setIsExpanded, isExpanded }) => {
           {/* Button to close Popup */}
           <button
             onClick={() => {
-              setIsExpanded(false)
+              setExpanded(false)
 
               // Reset Errors
               setError(null)
@@ -131,7 +141,12 @@ const AddTodoPopup: FC<AddTodoPopupProps> = ({ setIsExpanded, isExpanded }) => {
           type={"text"}
           placeholder="Title"
           className="h-10 rounded-lg p-3 outline-none transition-all duration-200 hover:bg-gray-50 focus:bg-gray-100"
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => setFormData((prev) => {
+            return {
+              ...prev,
+              title: e.target.value 
+            }
+          })}
         />
 
         {/* `description` text input */}
@@ -139,7 +154,12 @@ const AddTodoPopup: FC<AddTodoPopupProps> = ({ setIsExpanded, isExpanded }) => {
           type={"text"}
           placeholder="Description"
           className="h-10 rounded-lg p-3 outline-none transition-all duration-200 hover:bg-gray-50 focus:bg-gray-100"
-          onChange={(e) => setDescription(e.target.value)}
+          onChange={(e) => setFormData((prev) => {
+            return {
+              ...prev,
+              description: e.target.value 
+            }
+          })}
         />
 
         {/* Display error message */}
@@ -163,68 +183,74 @@ const AddTodoPopup: FC<AddTodoPopupProps> = ({ setIsExpanded, isExpanded }) => {
  * Create, Delete and View Todos
  */
 const Index: NextPage = () => {
-  const [isAddPopupExpanded, setAddPopupExpanded] = useState<boolean>(false)
-  const [error, setError] = useState<String>("")
-  const { isLoading, data: todos } = useQuery("todos", () => getTodo(5))
+  const popupState = useState<boolean>(false)
+  const [,setExpanded] = popupState;
+  const [error, setError] = useState<String>();
+  const { isLoading, data: todos } = useQuery(
+    "todos",
+    () => getTodo(5)
+  )
 
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-gray-50">
+    <PopupContext.Provider value={popupState}>
 
-      <AddTodoPopup
-        setIsExpanded={setAddPopupExpanded}
-        isExpanded={isAddPopupExpanded}
-      />
+      <Container className="flex justify-center items-center">
 
-      {/* Box Container */}
-      <div className="flex h-[600px] w-[500px] flex-col rounded-lg bg-gray-200 shadow-xl">
+        <AddTodoPopup />
 
-        {/* Header Container */}
-        <div className="flex h-20 w-full justify-between rounded-lg bg-gray-300">
+        {/* Box Container */}
+        <Box className="h-[550px] w-[500px]">
 
-          <div className="ml-5 mr-5 flex h-20 w-full items-center justify-between">
+          {/* Header Container */}
+          <div className="flex h-20 w-full justify-between rounded-lg bg-gray-300">
 
-            <h1 className="text-2xl text-gray-700">Todos</h1>
+            <div className="ml-5 mr-5 flex h-20 w-full items-center justify-between">
 
-            {/* Add Todo Button */}
-            <input
-              type="submit"
-              value="Add"
-              className="w-20 cursor-pointer rounded-md bg-blue-300 p-2 text-gray-100"
-              onClick={() => setAddPopupExpanded(true)}
-            />
+              <h1 className="text-2xl text-gray-700">Todos</h1>
+
+              {/* Add Todo Button */}
+              <input
+                type="submit"
+                value="Add"
+                className="w-20 cursor-pointer rounded-md bg-blue-300 p-2 text-gray-100"
+                onClick={() => setExpanded(true)}
+              />
+
+            </div>
 
           </div>
 
-        </div>
+          {/* List Container */}
+          <ul className="m-5 flex flex-col h-full gap-5">
 
-        {/* List Container */}
-        <ul className="m-5 flex flex-col gap-5">
+            {/* Displaying Todo Items */}
+            {(() => {
 
-          {/* Displaying Todo Items */}
-          {(() => {
+              if (isLoading) return <p className="text-blue-500">Loading</p>
 
-            if (isLoading) return <p className="text-blue-500">Loading</p>
+              if (!todos) return <p className="text-blue-500">No Todos</p>
 
-            if (!todos) return <p className="text-blue-500">No Todos</p>
+              return (
+                <Fragment>
+                  {todos.map((item) =>
+                      <TodoItem
+                        key={item.id}
+                        todo={item}
+                        onError={(error: String) => setError(error)}
+                      />
+                  )}
+                </Fragment>
+              )
+                  
+            })()}
 
-            return (
-              <Fragment>
-                {todos.map((item) =>
-                    <TodoItem
-                      todo={item}
-                      onError={(error: String) => setError(error)}
-                    />
-                )}
-              </Fragment>
-            )
-            
-          })()}
+          </ul>
 
-        </ul>
+        </Box>
 
-      </div>
-      
-    </div>
+      </Container>
+
+    </PopupContext.Provider>
   )
 }
 
