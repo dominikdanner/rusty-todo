@@ -3,30 +3,14 @@ extern crate diesel;
 extern crate dotenv;
 
 use actix_web::{App, web, HttpServer};
-use diesel::prelude::*;
 use actix_cors::Cors;
-use diesel::{PgConnection};
-use dotenv::dotenv;
-use std::env;
 
-pub mod schema;
-pub mod models;
+pub mod todo;
+use todo::models;
+use todo::schema;
 
 pub mod lib;
-pub mod routes;
-
-use lib::AppState;
-
-fn establish_connection() -> PgConnection {
-    dotenv().ok();
-
-    let database_url = env::var("DATABASE_URL")
-        .expect("DATABASE_URL must be set");
-    PgConnection::establish(&database_url)
-        .expect(&format!("Error connecting to {}", database_url))
-}
-
-
+use lib::{AppState, establish_connection};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -42,7 +26,7 @@ async fn main() -> std::io::Result<()> {
                 dbconn: establish_connection(),
             }))
             .wrap(cors)
-            .configure(routes::todo::config)
+            .configure(todo::controllers::config)
         
     }
     )
